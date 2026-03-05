@@ -153,7 +153,7 @@ func MakeDir(dir string, perm model.Permission) error {
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(abs, os.ModePerm)
+	err = os.MkdirAll(abs, 0750)
 	if err != nil {
 		return err
 	}

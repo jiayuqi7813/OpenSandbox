@@ -37,7 +37,18 @@ func (c *FilesystemController) DownloadFile() {
 		return
 	}
 
-	file, err := os.Open(filePath)
+	// Canonicalize to an absolute path so that relative traversals are resolved.
+	absPath, err := filepath.Abs(filepath.Clean(filePath))
+	if err != nil {
+		c.RespondError(
+			http.StatusBadRequest,
+			model.ErrorCodeInvalidRequest,
+			"invalid file path",
+		)
+		return
+	}
+
+	file, err := os.Open(absPath)
 	if err != nil {
 		c.handleFileError(err)
 		return

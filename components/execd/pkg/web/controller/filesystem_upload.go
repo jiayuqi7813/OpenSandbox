@@ -111,8 +111,21 @@ func (c *FilesystemController) UploadFile() {
 			return
 		}
 
+		// Canonicalize to absolute path to resolve any traversal sequences.
+		targetPath = filepath.Clean(targetPath)
+		absTarget, err := filepath.Abs(targetPath)
+		if err != nil {
+			c.RespondError(
+				http.StatusBadRequest,
+				model.ErrorCodeInvalidFileMetadata,
+				"invalid target path",
+			)
+			return
+		}
+		targetPath = absTarget
+
 		targetDir := filepath.Dir(targetPath)
-		if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(targetDir, 0750); err != nil {
 			c.RespondError(
 				http.StatusInternalServerError,
 				model.ErrorCodeRuntimeError,
@@ -132,7 +145,7 @@ func (c *FilesystemController) UploadFile() {
 			return
 		}
 
-		dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+		dst, err := os.OpenFile(targetPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 		if err != nil {
 			file.Close()
 			c.RespondError(

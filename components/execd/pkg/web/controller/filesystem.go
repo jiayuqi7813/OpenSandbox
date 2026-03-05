@@ -171,7 +171,27 @@ func (c *FilesystemController) MakeDirs() {
 func (c *FilesystemController) RemoveDirs() {
 	paths := c.ctx.QueryArray("path")
 	for _, dir := range paths {
-		if err := os.RemoveAll(dir); err != nil {
+		absDir, err := filepath.Abs(filepath.Clean(dir))
+		if err != nil {
+			c.RespondError(
+				http.StatusBadRequest,
+				model.ErrorCodeInvalidRequest,
+				fmt.Sprintf("invalid directory path: %s", dir),
+			)
+			return
+		}
+
+		// Prevent removal of critical system directories.
+		if absDir == "/" || absDir == "/etc" || absDir == "/usr" || absDir == "/bin" || absDir == "/sbin" || absDir == "/lib" || absDir == "/proc" || absDir == "/sys" || absDir == "/dev" || absDir == "/boot" || absDir == "/var" {
+			c.RespondError(
+				http.StatusForbidden,
+				model.ErrorCodeInvalidRequest,
+				fmt.Sprintf("cannot remove protected system directory: %s", absDir),
+			)
+			return
+		}
+
+		if err := os.RemoveAll(absDir); err != nil {
 			c.RespondError(
 				http.StatusInternalServerError,
 				model.ErrorCodeRuntimeError,
