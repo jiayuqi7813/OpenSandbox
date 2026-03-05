@@ -19,6 +19,7 @@ This module defines FastAPI routes that map to the OpenAPI specification endpoin
 All business logic is delegated to the service layer that backs each operation.
 """
 
+import logging
 from typing import List, Optional
 
 import httpx
@@ -40,6 +41,8 @@ from src.api.schema import (
     SandboxFilter,
 )
 from src.services.factory import create_sandbox_service
+
+logger = logging.getLogger(__name__)
 
 # RFC 2616 Section 13.5.1
 HOP_BY_HOP_HEADERS = {
@@ -474,14 +477,16 @@ async def proxy_sandbox_endpoint_request(request: Request, sandbox_id: str, port
             headers=resp.headers,
         )
     except httpx.ConnectError as e:
+        logger.warning("Proxy connect error for sandbox %s: %s", sandbox_id, e)
         raise HTTPException(
             status_code=502,
-            detail=f"Could not connect to the backend sandbox {endpoint}: {e}",
+            detail="Could not connect to the backend sandbox.",
         )
     except HTTPException:
         # Preserve explicit HTTP exceptions raised above (e.g. websocket upgrade not supported).
         raise
     except Exception as e:
+        logger.exception("Proxy error for sandbox %s: %s", sandbox_id, e)
         raise HTTPException(
-            status_code=500, detail=f"An internal error occurred in the proxy: {e}"
+            status_code=500, detail="An internal error occurred in the proxy."
         )

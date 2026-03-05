@@ -134,7 +134,7 @@ func (c *Controller) newContextID() string {
 
 func (c *Controller) newIpynbPath(sessionID, cwd string) (string, error) {
 	if cwd != "" {
-		err := os.MkdirAll(cwd, os.ModePerm)
+		err := os.MkdirAll(cwd, 0750)
 		if err != nil {
 			return "", err
 		}

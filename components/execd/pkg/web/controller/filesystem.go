@@ -33,6 +33,23 @@ import (
 	"github.com/alibaba/opensandbox/execd/pkg/web/model"
 )
 
+// protectedSystemDirs contains absolute paths that must never be removed via the API.
+// execd runs inside a sandbox container; these guard essential container-internal paths.
+var protectedSystemDirs = map[string]bool{
+	"/":     true,
+	"/bin":  true,
+	"/boot": true,
+	"/dev":  true,
+	"/etc":  true,
+	"/lib":  true,
+	"/lib64": true,
+	"/proc": true,
+	"/sbin": true,
+	"/sys":  true,
+	"/usr":  true,
+	"/var":  true,
+}
+
 // FilesystemController handles file system operations
 type FilesystemController struct {
 	*basicController
@@ -171,7 +188,27 @@ func (c *FilesystemController) MakeDirs() {
 func (c *FilesystemController) RemoveDirs() {
 	paths := c.ctx.QueryArray("path")
 	for _, dir := range paths {
-		if err := os.RemoveAll(dir); err != nil {
+		absDir, err := filepath.Abs(filepath.Clean(dir))
+		if err != nil {
+			c.RespondError(
+				http.StatusBadRequest,
+				model.ErrorCodeInvalidRequest,
+				fmt.Sprintf("invalid directory path: %s", dir),
+			)
+			return
+		}
+
+		// Prevent removal of critical system directories.
+		if protectedSystemDirs[absDir] {
+			c.RespondError(
+				http.StatusForbidden,
+				model.ErrorCodeInvalidRequest,
+				fmt.Sprintf("cannot remove protected system directory: %s", absDir),
+			)
+			return
+		}
+
+		if err := os.RemoveAll(absDir); err != nil {
 			c.RespondError(
 				http.StatusInternalServerError,
 				model.ErrorCodeRuntimeError,

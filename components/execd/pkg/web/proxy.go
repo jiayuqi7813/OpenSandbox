@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +47,13 @@ func ProxyMiddleware() gin.HandlerFunc {
 		}
 
 		port := parts[0]
+		portNum, err := strconv.Atoi(port)
+		if err != nil || portNum < 1 || portNum > 65535 {
+			http.Error(w, "invalid port number: must be between 1 and 65535", http.StatusBadRequest)
+			c.Abort()
+			return
+		}
+
 		path := "/"
 		if len(parts) == 2 && parts[1] != "" {
 			path += parts[1]
