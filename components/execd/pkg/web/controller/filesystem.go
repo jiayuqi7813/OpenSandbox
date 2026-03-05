@@ -33,6 +33,23 @@ import (
 	"github.com/alibaba/opensandbox/execd/pkg/web/model"
 )
 
+// protectedSystemDirs contains absolute paths that must never be removed via the API.
+// execd runs inside a sandbox container; these guard essential container-internal paths.
+var protectedSystemDirs = map[string]bool{
+	"/":     true,
+	"/bin":  true,
+	"/boot": true,
+	"/dev":  true,
+	"/etc":  true,
+	"/lib":  true,
+	"/lib64": true,
+	"/proc": true,
+	"/sbin": true,
+	"/sys":  true,
+	"/usr":  true,
+	"/var":  true,
+}
+
 // FilesystemController handles file system operations
 type FilesystemController struct {
 	*basicController
@@ -182,7 +199,7 @@ func (c *FilesystemController) RemoveDirs() {
 		}
 
 		// Prevent removal of critical system directories.
-		if absDir == "/" || absDir == "/etc" || absDir == "/usr" || absDir == "/bin" || absDir == "/sbin" || absDir == "/lib" || absDir == "/proc" || absDir == "/sys" || absDir == "/dev" || absDir == "/boot" || absDir == "/var" {
+		if protectedSystemDirs[absDir] {
 			c.RespondError(
 				http.StatusForbidden,
 				model.ErrorCodeInvalidRequest,
